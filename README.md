@@ -12,20 +12,20 @@ Redis Queue에서 메시지를 구독하고, 데코레이터를 통해 등록한
 
 ## 설치
 
-### GitHub Release에서 설치 (권장)
+### GitHub Release에서 설치
 
 ```bash
 # 최신 릴리즈 설치
-pip install git+https://github.com/yourusername/redis-subscriber.git@v1.0.0
+pip install git+https://github.com/minturtle/redis-subscriber.git@v1.0.0
 
 # 또는 특정 브랜치에서 설치
-pip install git+https://github.com/yourusername/redis-subscriber.git@main
+pip install git+https://github.com/minturtle/redis-subscriber.git@main
 ```
 
 ### 소스에서 직접 설치
 
 ```bash
-git clone https://github.com/yourusername/redis-subscriber.git
+git clone https://github.com/minturtle/redis-subscriber.git
 cd redis-subscriber
 pip install -e .
 ```
@@ -33,7 +33,7 @@ pip install -e .
 ### 개발 모드 설치
 
 ```bash
-git clone https://github.com/yourusername/redis-subscriber.git
+git clone https://github.com/minturtle/redis-subscriber.git
 cd redis-subscriber
 pip install -e ".[dev]"
 ```

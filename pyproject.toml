@@ -1,6 +1,4 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+# GitHub Release 전용 패키지 - PyPI 배포 없음
 
 [project]
 name = "redis-subscriber"
@@ -43,10 +41,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/redis-subscriber"
-Repository = "https://github.com/yourusername/redis-subscriber"
-Documentation = "https://github.com/yourusername/redis-subscriber#readme"
-"Bug Tracker" = "https://github.com/yourusername/redis-subscriber/issues"
+Repository = "https://github.com/minturtle/redis-subscriber"
+Documentation = "https://github.com/minturtle/redis-subscriber#readme"
+"Bug Tracker" = "https://github.com/minturtle/redis-subscriber/issues"
+Releases = "https://github.com/minturtle/redis-subscriber/releases"
 
 [tool.setuptools.packages.find]
 where = ["."]
