@@ -11,7 +11,6 @@ import redis
 from testcontainers.redis import RedisContainer
 from redis_subscriber import RedisSubscriber
 
-
 class TestRedisSubscriberIntegration:
     """Redis Subscriber 프레임워크 통합 테스트 클래스"""
     
@@ -106,12 +105,14 @@ class TestBasicFunctionality(TestRedisSubscriberIntegration):
         redis_client.lpush(test_queue_name, "test_message")
         time.sleep(0.1)  # 메시지 처리 대기
         
+        # 스레드가 종료되었는지 확인 (stop() 호출 전에)
+        time.sleep(0.1)  # 메시지 처리 완료 대기
+        
         # 프레임워크 종료
         subscriber.stop()
         
-        # 스레드가 종료되었는지 확인
-        time.sleep(0.1)  # 스레드 종료 대기
-        assert not subscriber._threads[test_queue_name].is_alive()
+        # stop() 후에는 _threads가 비어있어야 함
+        assert len(subscriber._threads) == 0
         
         # 중복 start/stop 호출 안전성 확인
         subscriber.start()

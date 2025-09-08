@@ -65,6 +65,11 @@ class RedisSubscriber:
             self.logger.warning("프레임워크가 이미 실행 중입니다.")
             return
         
+        # 이전에 실행된 적이 있다면 정리
+        if self._threads:
+            self.logger.info("이전 스레드 정보를 정리합니다.")
+            self._threads.clear()
+        
         try:
             # Redis 클라이언트 연결 (인증 정보 포함)
             connection_kwargs = {'decode_responses': True}
@@ -118,6 +123,7 @@ class RedisSubscriber:
             self._redis_client.close()
             self._redis_client = None
         
+        # 스레드 정보 정리
         self._threads.clear()
         self.logger.info("Redis Subscriber 프레임워크가 종료되었습니다.")
     

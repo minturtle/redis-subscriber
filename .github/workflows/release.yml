@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build package
+      run: python -m build
+    
+    - name: Check package
+      run: twine check dist/*
+    
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Redis Subscriber v${{ github.ref_name }}
+          
+          ### 설치 방법
+          
+          #### GitHub에서 직접 설치
+          ```bash
+          pip install git+https://github.com/${{ github.repository }}.git@${{ github.ref_name }}
+          ```
+          
+          #### 소스에서 설치
+          ```bash
+          git clone https://github.com/${{ github.repository }}.git
+          cd redis-subscriber
+          git checkout ${{ github.ref_name }}
+          pip install -e .
+          ```
+          
+          ### 사용법
+          ```python
+          from redis_subscriber import RedisSubscriber
+          
+          subscriber = RedisSubscriber("redis://localhost:6379")
+          
+          @subscriber.subscribe("my_queue")
+          def my_handler(msg):
+              print(f"받은 메시지: {msg}")
+          
+          subscriber.start()
+          # ... 애플리케이션 로직
+          subscriber.stop()
+          ```
+    
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/
+        asset_name: redis-subscriber-${{ github.ref_name }}-dist
+        asset_content_type: application/zip
