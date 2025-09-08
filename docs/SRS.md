@@ -3,69 +3,69 @@
 ## 1. 소프트웨어 개요
 
 ### 1.1 목적
-Redis Streams에서 메시지를 구독하고, 데코레이터를 통해 등록한 Python 함수에 메시지를 전달하는 최소 기능 프레임워크를 개발한다.
+Redis Queue에서 메시지를 구독하고, 데코레이터를 통해 등록한 Python 함수에 메시지를 전달하는 최소 기능 프레임워크를 개발한다.
 
 ### 1.2 범위
-- Redis Streams 메시지 구독 및 처리
+- Redis Queue 메시지 구독 및 처리
 - 데코레이터 기반 함수 등록
 - 멀티스레드 메시지 처리
 - 안전한 시작/종료 기능
 
 ### 1.3 기술 스택
 - **언어:** Python ≥3.9
-- **외부 의존:** `redis-py`, `concurrent.futures.ThreadPoolExecutor`
+- **외부 의존:** `redis-py`
 
 ---
 
 ## 2. 기능 요구사항
 
-### 2.1 FR-001: Redis Streams 구독
+### 2.1 FR-001: Redis Queue 구독
 **우선순위:** 높음
 
-**설명:** Redis Streams에서 메시지를 블로킹 방식으로 구독한다.
+**설명:** Redis Queue에서 메시지를 블로킹 방식으로 구독한다.
 
 **세부 요구사항:**
-- 각 Stream별로 별도 스레드에서 `XREAD` 명령어를 사용한 블로킹 대기
-- 메시지 수신 시 즉시 ThreadPoolExecutor를 통해 등록된 함수로 전달
-- 메시지 처리 중 프레임워크는 블로킹 없이 다음 메시지 처리 가능
+- 각 Queue별로 별도 스레드에서 `BLPOP` 명령어를 사용한 블로킹 대기
+- 메시지 수신 시 동기적으로 등록된 함수에 직접 전달
+- 각 Queue는 독립적으로 메시지를 순차 처리
 
-**입력:** Redis Stream 이름
-**출력:** 메시지 dict 객체
+**입력:** Redis Queue 이름
+**출력:** 메시지 문자열
 
 ### 2.2 FR-002: 데코레이터 기반 함수 등록
 **우선순위:** 높음
 
-**설명:** `@subscriber.subscribe()` 데코레이터를 통해 Stream별 처리 함수를 등록한다.
+**설명:** `@subscriber.subscribe()` 데코레이터를 통해 Queue별 처리 함수를 등록한다.
 
 **세부 요구사항:**
 - 데코레이터 문법으로 함수 등록
-- Stream 이름을 데코레이터 인자로 전달
-- 등록된 함수는 메시지 dict를 첫 번째 인자로 받음
+- Queue 이름을 데코레이터 인자로 전달
+- 등록된 함수는 메시지 문자열을 첫 번째 인자로 받음
 
 **사용 예시:**
 ```python
-@subscriber.subscribe("stream1")
-def handle_stream1(msg):
+@subscriber.subscribe("queue1")
+def handle_queue1(msg):
     print(msg)
 ```
 
 ### 2.3 FR-003: 멀티스레드 메시지 처리
 **우선순위:** 높음
 
-**설명:** Stream Listener Thread와 Worker Thread를 분리하여 병렬 메시지 처리를 지원한다.
+**설명:** Queue Listener Thread가 동기적으로 메시지를 처리한다.
 
 **세부 요구사항:**
-- **Stream Listener Thread:** 각 Stream에서 메시지 블로킹 대기
-- **ThreadPoolExecutor:** Stream Listener에서 수신한 메시지를 병렬 처리
-- Worker Thread 개수는 생성자에서 설정 가능
+- **Queue Listener Thread:** 각 Queue에서 메시지 블로킹 대기
+- 메시지 수신 시 등록된 함수에 직접 호출
+- 동기적 순차 처리
 
 **아키텍처:**
 ```
 Main Thread
    |
-   +-- Stream1 Listener Thread --> ThreadPoolExecutor --> Handler Func A
+   +-- Queue1 Listener Thread --> Handler Func A
    |
-   +-- Stream2 Listener Thread --> ThreadPoolExecutor --> Handler Func B
+   +-- Queue2 Listener Thread --> Handler Func B
 ```
 
 ### 2.4 FR-004: 프레임워크 시작/종료
@@ -74,8 +74,8 @@ Main Thread
 **설명:** 프레임워크의 안전한 시작과 종료를 지원한다.
 
 **세부 요구사항:**
-- `start()`: 모든 Stream Listener Thread 시작
-- `stop()`: 모든 Stream Listener Thread 및 Worker Thread 안전 종료
+- `start()`: 모든 Queue Listener Thread 시작
+- `stop()`: 모든 Queue Listener Thread 안전 종료
 - 종료 시 진행 중인 메시지 처리 완료 후 종료
 
 ### 2.5 FR-005: 에러 처리
@@ -94,15 +94,15 @@ Main Thread
 
 ### 3.1 NFR-001: 성능
 - 메시지 처리 지연시간 최소화
-- 동시 처리 가능한 메시지 수는 ThreadPoolExecutor의 max_workers에 따라 결정
+- 각 Queue별 독립적인 순차 처리
 
 ### 3.2 NFR-002: 안정성
 - 메시지 처리 중 에러 발생 시에도 프레임워크 중단 없음
 - 안전한 종료 보장
 
 ### 3.3 NFR-003: 확장성
-- Stream 개수에 제한 없음
-- Worker Thread 개수 조정 가능
+- Queue 개수에 제한 없음
+- 각 Queue별 독립적인 처리
 
 ---
 
@@ -112,20 +112,19 @@ Main Thread
 
 #### 생성자
 ```python
-RedisSubscriber(redis_url: str, max_workers: int = 4)
+RedisSubscriber(redis_url: str)
 ```
 
 **매개변수:**
 - `redis_url`: Redis 연결 URL (예: "redis://localhost:6379")
-- `max_workers`: ThreadPoolExecutor의 최대 Worker Thread 수 (기본값: 4)
 
 #### 메서드
 
-##### subscribe(stream_name: str)
-**설명:** Stream 구독을 위한 데코레이터
+##### subscribe(queue_name: str)
+**설명:** Queue 구독을 위한 데코레이터
 
 **매개변수:**
-- `stream_name`: 구독할 Redis Stream 이름
+- `queue_name`: 구독할 Redis Queue 이름
 
 **반환값:** 데코레이터 함수
 
@@ -151,16 +150,16 @@ RedisSubscriber(redis_url: str, max_workers: int = 4)
 from redis_subscriber import RedisSubscriber
 
 # 프레임워크 초기화
-subscriber = RedisSubscriber(redis_url="redis://localhost:6379", max_workers=4)
+subscriber = RedisSubscriber(redis_url="redis://localhost:6379")
 
-# Stream별 처리 함수 등록
-@subscriber.subscribe("stream1")
-def handle_stream1(msg):
-    print(f"Stream1 메시지: {msg}")
+# Queue별 처리 함수 등록
+@subscriber.subscribe("queue1")
+def handle_queue1(msg):
+    print(f"Queue1 메시지: {msg}")
 
-@subscriber.subscribe("stream2")
-def handle_stream2(msg):
-    print(f"Stream2 메시지: {msg}")
+@subscriber.subscribe("queue2")
+def handle_queue2(msg):
+    print(f"Queue2 메시지: {msg}")
 
 # 프레임워크 시작
 subscriber.start()
@@ -174,7 +173,7 @@ subscriber.stop()
 ## 6. 제외 사항
 
 다음 기능들은 이번 버전에 포함하지 않음:
-- Stream 추가/제거 (런타임)
+- Queue 추가/제거 (런타임)
 - 메시지 재시도
 - 우선순위 조정
 - 메시지 필터링
@@ -191,12 +190,12 @@ subscriber.stop()
 - 에러 처리 테스트
 
 ### 7.2 통합 테스트
-- Redis Streams와의 실제 통신 테스트
+- Redis Queue와의 실제 통신 테스트
 - 멀티스레드 동작 테스트
 - 시작/종료 기능 테스트
 
 ### 7.3 성능 테스트
-- 동시 메시지 처리 성능 테스트
+- 순차 메시지 처리 성능 테스트
 - 메모리 사용량 테스트
 
 ---
