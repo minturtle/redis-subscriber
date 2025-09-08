@@ -3,80 +3,81 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-    
-    - name: Run tests
-      run: pytest tests/ -v
-    
-    - name: Create Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-        body: |
-          ## Redis Subscriber v${{ github.ref_name }}
-          
-          ### 설치 방법
-          
-          #### GitHub에서 직접 설치
-          ```bash
-          pip install git+https://github.com/minturtle/redis-subscriber.git@${{ github.ref_name }}
-          ```
-          
-          #### 소스에서 설치
-          ```bash
-          git clone https://github.com/minturtle/redis-subscriber.git
-          cd redis-subscriber
-          git checkout ${{ github.ref_name }}
-          pip install -e .
-          ```
-          
-          ### 사용법
-          ```python
-          from redis_subscriber import RedisSubscriber
-          
-          subscriber = RedisSubscriber("redis://localhost:6379")
-          
-          @subscriber.subscribe("my_queue")
-          def my_handler(msg):
-              print(f"받은 메시지: {msg}")
-          
-          subscriber.start()
-          # ... 애플리케이션 로직
-          subscriber.stop()
-          ```
-    
-    - name: Create source archive
-      run: |
-        git archive --format=zip --output=redis-subscriber-${{ github.ref_name }}.zip HEAD
-    
-    - name: Upload Release Assets
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./redis-subscriber-${{ github.ref_name }}.zip
-        asset_name: redis-subscriber-${{ github.ref_name }}.zip
-        asset_content_type: application/zip
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Redis Subscriber v${{ github.ref_name }}
+
+            ### 설치 방법
+
+            #### GitHub에서 직접 설치
+            ```bash
+            pip install git+https://github.com/minturtle/redis-subscriber.git@${{ github.ref_name }}
+            ```
+
+            #### 소스에서 설치
+            ```bash
+            git clone https://github.com/minturtle/redis-subscriber.git
+            cd redis-subscriber
+            git checkout ${{ github.ref_name }}
+            pip install -e .
+            ```
+
+            ### 사용법
+            ```python
+            from redis_subscriber import RedisSubscriber
+
+            subscriber = RedisSubscriber("redis://localhost:6379")
+
+            @subscriber.subscribe("my_queue")
+            def my_handler(msg):
+                print(f"받은 메시지: {msg}")
+
+            subscriber.start()
+            # ... 애플리케이션 로직
+            subscriber.stop()
+            ```
+
+      - name: Create source archive
+        run: |
+          git archive --format=zip --output=redis-subscriber-${{ github.ref_name }}.zip HEAD
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./redis-subscriber-${{ github.ref_name }}.zip
+          asset_name: redis-subscriber-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
