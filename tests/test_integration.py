@@ -59,7 +59,7 @@ class TestRedisSubscriberIntegration:
         return "test_message_content"
 
 
-class TestBasicFunctionality:
+class TestBasicFunctionality(TestRedisSubscriberIntegration):
     """기본 기능 통합 테스트"""
     
     def test_subscribe_decorator_registration(self, subscriber, test_queue_name):
@@ -124,7 +124,7 @@ class TestBasicFunctionality:
         assert "test_message" in received_messages
 
 
-class TestMessageProcessing:
+class TestMessageProcessing(TestRedisSubscriberIntegration):
     """메시지 처리 통합 테스트"""
     
     def test_message_processing_and_threading(self, subscriber, redis_client):
@@ -198,7 +198,7 @@ class TestMessageProcessing:
         assert not any("queue3" in msg for msg in queue1_messages + queue2_messages)
 
 
-class TestErrorHandling:
+class TestErrorHandling(TestRedisSubscriberIntegration):
     """에러 처리 통합 테스트"""
     
     def test_handler_function_error_handling(self, subscriber, redis_client, test_queue_name):
@@ -310,7 +310,7 @@ class TestErrorHandling:
 
 
 
-class TestRealWorldScenarios:
+class TestRealWorldScenarios(TestRedisSubscriberIntegration):
     """실제 사용 시나리오 통합 테스트"""
     
     def test_comprehensive_scenarios(self, subscriber, redis_client, test_queue_name):
