@@ -16,7 +16,7 @@ Redis Queue에서 메시지를 구독하고, 데코레이터를 통해 등록한
 
 ```bash
 # 최신 릴리즈 설치
-pip install git+https://github.com/minturtle/redis-subscriber.git@v1.0.0
+pip install git+https://github.com/minturtle/redis-subscriber.git@v1.0.1
 
 # 또는 특정 브랜치에서 설치
 pip install git+https://github.com/minturtle/redis-subscriber.git@main
@@ -44,6 +44,8 @@ pip install -e ".[dev]"
 
 ```python
 from redis_subscriber import RedisSubscriber
+import logging
+logging.basicConfig(level=logging.INFO)
 
 # 프레임워크 초기화
 subscriber = RedisSubscriber(redis_url="redis://localhost:6379")
