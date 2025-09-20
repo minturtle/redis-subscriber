@@ -47,6 +47,27 @@ class TestRedisSubscriberIntegration:
         except:
             pass
     
+    def start_subscriber_in_thread(self, subscriber):
+        """테스트용 헬퍼 메서드 - subscriber를 별도 스레드에서 시작"""
+        def start_worker():
+            try:
+                subscriber.start()
+            except Exception:
+                # 테스트 중 예상되는 예외는 무시
+                pass
+        
+        start_thread = threading.Thread(target=start_worker, daemon=True)
+        start_thread.start()
+        
+        # 스레드가 실제로 시작될 때까지 대기
+        max_wait = 50  # 최대 5초 대기 (0.1초씩 50번)
+        for _ in range(max_wait):
+            if hasattr(subscriber, '_threads') and len(subscriber._threads) > 0:
+                break
+            time.sleep(0.1)
+        
+        return start_thread
+    
     @pytest.fixture
     def test_queue_name(self):
         """테스트용 큐 이름"""
@@ -93,10 +114,10 @@ class TestBasicFunctionality(TestRedisSubscriberIntegration):
         def test_handler(msg):
             received_messages.append(msg)
         
-        # 프레임워크 시작
-        subscriber.start()
+        # 프레임워크 시작 (별도 스레드에서)
+        self.start_subscriber_in_thread(subscriber)
         
-        # 스레드가 시작되었는지 확인
+        # 스레드가 시작되었는지 확인 (start_subscriber_in_thread에서 이미 대기함)
         assert hasattr(subscriber, '_threads')
         assert test_queue_name in subscriber._threads
         assert subscriber._threads[test_queue_name].is_alive()
@@ -115,10 +136,12 @@ class TestBasicFunctionality(TestRedisSubscriberIntegration):
         assert len(subscriber._threads) == 0
         
         # 중복 start/stop 호출 안전성 확인
-        subscriber.start()
+        self.start_subscriber_in_thread(subscriber)
         subscriber.stop()
-        subscriber.start()
+        time.sleep(0.2)  # 종료 대기
+        self.start_subscriber_in_thread(subscriber)
         subscriber.stop()
+        time.sleep(0.2)  # 종료 대기
         
         # 메시지가 정상 처리되었는지 확인
         assert len(received_messages) >= 1
@@ -168,8 +191,8 @@ class TestMessageProcessing(TestRedisSubscriberIntegration):
                 'thread_id': threading.current_thread().ident
             })
         
-        # 프레임워크 시작
-        subscriber.start()
+        # 프레임워크 시작 (별도 스레드에서)
+        self.start_subscriber_in_thread(subscriber)
         
         # 각 큐에 메시지 전송
         redis_client.lpush("test_queue1", "msg1_1")
@@ -226,8 +249,8 @@ class TestErrorHandling(TestRedisSubscriberIntegration):
             else:
                 success_count += 1
         
-        # 프레임워크 시작
-        subscriber.start()
+        # 프레임워크 시작 (별도 스레드에서)
+        self.start_subscriber_in_thread(subscriber)
         
         # 에러를 발생시키는 메시지와 정상 메시지 전송
         test_messages = [
@@ -272,6 +295,7 @@ class TestErrorHandling(TestRedisSubscriberIntegration):
         
         # 연결 실패 시 적절한 에러가 발생하는지 확인
         with pytest.raises(Exception):  # Redis 연결 에러
+            # start() 메서드가 메인 스레드를 대기시키므로 직접 호출
             invalid_subscriber.start()
     
     def test_handler_function_timeout_handling(self, subscriber, redis_client, test_queue_name):
@@ -287,8 +311,8 @@ class TestErrorHandling(TestRedisSubscriberIntegration):
             # 의도적으로 처리 시간을 늘림
             time.sleep(0.2)
         
-        # 프레임워크 시작
-        subscriber.start()
+        # 프레임워크 시작 (별도 스레드에서)
+        self.start_subscriber_in_thread(subscriber)
         
         # 여러 메시지 전송
         test_messages = ["slow_msg_1", "slow_msg_2", "slow_msg_3"]
@@ -329,8 +353,8 @@ class TestRealWorldScenarios(TestRedisSubscriberIntegration):
         def test_handler(msg):
             received_messages.append(msg)
         
-        # 프레임워크 시작
-        subscriber.start()
+        # 프레임워크 시작 (별도 스레드에서)
+        self.start_subscriber_in_thread(subscriber)
         
         # 다양한 타입의 메시지들
         test_messages = [
@@ -363,7 +387,8 @@ class TestRealWorldScenarios(TestRedisSubscriberIntegration):
         
         # 2. 빠른 시작/종료 반복 테스트
         for i in range(3):
-            subscriber.start()
+            self.start_subscriber_in_thread(subscriber)
+            time.sleep(0.1)  # 시작 대기
             redis_client.lpush(test_queue_name, f"cycle_{i}_msg")
             time.sleep(0.1)
             subscriber.stop()
@@ -382,7 +407,7 @@ class TestRealWorldScenarios(TestRedisSubscriberIntegration):
         def send_email(email_data):
             emails.append(email_data)
         
-        subscriber.start()
+        self.start_subscriber_in_thread(subscriber)
         
         # 주문 데이터 전송
         order_ids = ["ORDER_001", "ORDER_002"]
