@@ -7,6 +7,8 @@ Author: Minseok kim
 import redis
 import threading
 import logging
+import signal
+import sys
 from typing import Dict, Callable, Any
 
 
@@ -29,9 +31,14 @@ class RedisSubscriber:
         self._threads: Dict[str, threading.Thread] = {}
         self._running = False
         self._redis_client = None
+        self._main_thread = None
         
         # 로깅 설정
         self.logger = logging.getLogger(__name__)
+        
+        # 시그널 핸들러 설정
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
     
     def subscribe(self, queue_name: str):
         """
@@ -60,7 +67,7 @@ class RedisSubscriber:
         return decorator
     
     def start(self):
-        """프레임워크 시작 - 모든 Queue Listener Thread 시작"""
+        """프레임워크 시작 - 모든 Queue Listener Thread 시작하고 메인 스레드 대기"""
         if self._running:
             self.logger.warning("프레임워크가 이미 실행 중입니다.")
             return
@@ -98,6 +105,11 @@ class RedisSubscriber:
                 self.logger.info(f"큐 리스너 스레드 시작됨: {queue_name}")
             
             self.logger.info("Redis Subscriber 프레임워크가 시작되었습니다.")
+            self.logger.info("Ctrl+C를 눌러 종료할 수 있습니다.")
+            
+            # 메인 스레드가 대기하도록 수정
+            self._main_thread = threading.current_thread()
+            self._wait_for_shutdown()
             
         except Exception as e:
             self.logger.error(f"프레임워크 시작 실패: {e}")
@@ -126,6 +138,34 @@ class RedisSubscriber:
         # 스레드 정보 정리
         self._threads.clear()
         self.logger.info("Redis Subscriber 프레임워크가 종료되었습니다.")
+    
+    def _signal_handler(self, signum, frame):
+        """시그널 핸들러 - Ctrl+C 또는 SIGTERM 신호 처리"""
+        self.logger.info(f"시그널 {signum} 수신됨. 프레임워크를 종료합니다...")
+        self.stop()
+        sys.exit(0)
+    
+    def _wait_for_shutdown(self):
+        """메인 스레드가 대기하도록 하는 메서드"""
+        try:
+            # 모든 큐 리스너 스레드가 살아있는 동안 대기
+            while self._running:
+                # 모든 스레드가 살아있는지 확인
+                alive_threads = [name for name, thread in self._threads.items() if thread.is_alive()]
+                
+                if not alive_threads:
+                    self.logger.warning("모든 큐 리스너 스레드가 종료되었습니다.")
+                    break
+                
+                # 1초마다 체크
+                threading.Event().wait(1.0)
+                
+        except KeyboardInterrupt:
+            self.logger.info("키보드 인터럽트 수신됨. 프레임워크를 종료합니다...")
+            self.stop()
+        except Exception as e:
+            self.logger.error(f"대기 중 에러 발생: {e}")
+            self.stop()
     
     def _queue_listener(self, queue_name: str):
         """
