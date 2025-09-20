@@ -25,47 +25,47 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v
 
-       - name: Create source archive
-         run: |
-           git archive --format=zip --output=redis-subscriber-${{ github.ref_name }}.zip HEAD
+      - name: Create source archive
+        run: |
+          git archive --format=zip --output=redis-subscriber-${{ github.ref_name }}.zip HEAD
 
-       - name: Create Release
-         uses: softprops/action-gh-release@v1
-         with:
-           tag_name: ${{ github.ref_name }}
-           name: Release ${{ github.ref_name }}
-           draft: false
-           prerelease: false
-           files: redis-subscriber-${{ github.ref_name }}.zip
-           body: |
-             ## Redis Subscriber v${{ github.ref_name }}
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: redis-subscriber-${{ github.ref_name }}.zip
+          body: |
+            ## Redis Subscriber v${{ github.ref_name }}
 
-             ### 설치 방법
+            ### 설치 방법
 
-             #### GitHub에서 직접 설치
-             ```bash
-             pip install git+https://github.com/minturtle/redis-subscriber.git@${{ github.ref_name }}
-             ```
+            #### GitHub에서 직접 설치
+            ```bash
+            pip install git+https://github.com/minturtle/redis-subscriber.git@${{ github.ref_name }}
+            ```
 
-             #### 소스에서 설치
-             ```bash
-             git clone https://github.com/minturtle/redis-subscriber.git
-             cd redis-subscriber
-             git checkout ${{ github.ref_name }}
-             pip install -e .
-             ```
+            #### 소스에서 설치
+            ```bash
+            git clone https://github.com/minturtle/redis-subscriber.git
+            cd redis-subscriber
+            git checkout ${{ github.ref_name }}
+            pip install -e .
+            ```
 
-             ### 사용법
-             ```python
-             from redis_subscriber import RedisSubscriber
+            ### 사용법
+            ```python
+            from redis_subscriber import RedisSubscriber
 
-             subscriber = RedisSubscriber("redis://localhost:6379")
+            subscriber = RedisSubscriber("redis://localhost:6379")
 
-             @subscriber.subscribe("my_queue")
-             def my_handler(msg):
-                 print(f"받은 메시지: {msg}")
+            @subscriber.subscribe("my_queue")
+            def my_handler(msg):
+                print(f"받은 메시지: {msg}")
 
-             subscriber.start()
-             # ... 애플리케이션 로직
-             subscriber.stop()
-             ```
+            subscriber.start()
+            # ... 애플리케이션 로직
+            subscriber.stop()
+            ```
